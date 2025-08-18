@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Set default background using custom color */
+body {
+	@apply bg-accent-blue text-text-dark;
+}
