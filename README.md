@@ -40,6 +40,27 @@ This template provides a minimal setup to get React working in Vite with HMR and
 
 Currently, two official plugins are available:
 
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default tseslint.config([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      ...tseslint.configs.recommendedTypeChecked,
+# React + TypeScript + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
 - [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
@@ -109,3 +130,7 @@ export default tseslint.config([
 =======
 # progress
 >>>>>>> 5e53604e2289ab0c06b340d25d88d9a5510a0aaa
+=======
+# YouTube-progress-tracker
+SkillUp Tracker is a React + TypeScript app for tracking and managing your learning progress. Features include a dashboard, scheduler, progress cards, YouTube video integration, and persistent local storage. Built with Vite and Tailwind CSS for a fast, modern, and responsive experience.
+>>>>>>> c92842691e98811022e884aa893bf30ffca8071f
