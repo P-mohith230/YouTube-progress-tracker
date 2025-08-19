@@ -1,80 +1,52 @@
 import VideoPlayer from './VideoPlayer'
 import ProgressCard from './ProgressCard'
-import type { PlaylistVideo } from '../services/youtube'
-import { useEffect, useMemo, useState } from 'react'
-import { updateStreakForCompletion } from '../utils/date'
+import { useMemo } from 'react'
 import { Sparkles } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { useSession } from '../context/SessionContext'
+import { toast } from 'react-hot-toast'
 
 interface DashboardProps {}
 
-interface UserSession {
-	schedule: Record<string, PlaylistVideo[]>
-	currentDay: number
-	currentVideoIndex: number
-	completedVideos: string[]
-	streak: number
-	lastCompletedDay: string
-}
-
 const Dashboard = (_props: DashboardProps) => {
-	const [session, setSession] = useState<UserSession | null>(null)
+	const { state, completeVideo } = useSession()
+	const active = state.playlists.find((p) => p.id === state.activePlaylistId)
 
-	useEffect(() => {
-		try {
-			const raw = localStorage.getItem('skillup_session')
-			if (raw) setSession(JSON.parse(raw) as UserSession)
-		} catch {}
-	}, [])
-
-	const daysKeys = useMemo(() => (session ? Object.keys(session.schedule) : []), [session])
-	const todayKey = useMemo(() => (session ? `day${session.currentDay}` : ''), [session])
-	const todayVideos = useMemo(() => (session ? session.schedule[todayKey] ?? [] : []), [session, todayKey])
+	const daysKeys = useMemo(() => (active ? Object.keys(active.schedule) : []), [active])
+	const todayKey = useMemo(() => (active ? `day${active.currentDay}` : ''), [active])
+	const todayVideos = useMemo(() => (active ? active.schedule[todayKey] ?? [] : []), [active, todayKey])
 	const totalVideos = useMemo(
-		() => (session ? daysKeys.reduce((sum, d) => sum + (session.schedule[d]?.length ?? 0), 0) : 0),
-		[session, daysKeys]
+		() => (active ? daysKeys.reduce((sum, d) => sum + (active.schedule[d]?.length ?? 0), 0) : 0),
+		[active, daysKeys]
 	)
 
-	function persist(next: UserSession) {
-		setSession(next)
-		localStorage.setItem('skillup_session', JSON.stringify(next))
-	}
-
 	function handleEnded() {
-		if (!session) return
-		const current = { ...session }
-		const currentList = current.schedule[`day${current.currentDay}`] ?? []
-		const currentVideo = currentList[current.currentVideoIndex]
-		if (!currentVideo) return
-
-		if (!current.completedVideos.includes(currentVideo.videoId)) {
-			current.completedVideos = [...current.completedVideos, currentVideo.videoId]
+		if (!active) return
+		const list = active.schedule[`day${active.currentDay}`] ?? []
+		const isLast = active.currentVideoIndex + 1 >= list.length
+		completeVideo()
+		if (isLast) {
+			toast.success('Nice! Streak updated')
 		}
-
-		const isLastVideoOfDay = current.currentVideoIndex + 1 >= currentList.length
-		if (isLastVideoOfDay) {
-			const { streak, lastCompletedDay } = updateStreakForCompletion(current.streak, current.lastCompletedDay)
-			current.streak = streak
-			current.lastCompletedDay = lastCompletedDay
-			current.currentDay += 1
-			current.currentVideoIndex = 0
-		} else {
-			current.currentVideoIndex += 1
-		}
-		persist(current)
 	}
 
-	const currentVideoId = todayVideos[session?.currentVideoIndex ?? 0]?.videoId
-	const completedCount = session?.completedVideos.length ?? 0
+	if (!active) {
+		return (
+			<div className="min-h-screen p-6 sm:p-8 bg-accent-blue">
+				<div className="max-w-3xl mx-auto bg-primary rounded-xl p-6 border border-accent-blue/50 text-text-light">Select a playlist from Home.</div>
+			</div>
+		)
+	}
+
+	const currentVideoId = todayVideos[active.currentVideoIndex]?.videoId
+	const completedCount = active.completedVideos.length
 	const overallPct = totalVideos ? Math.round((completedCount / totalVideos) * 100) : 0
-	const todaysDone = session ? todayVideos.filter(v => session.completedVideos.includes(v.videoId)).length : 0
-	const [nudge, setNudge] = useState<string>('')
-	const [loadingNudge, setLoadingNudge] = useState(false)
+	const todaysDone = todayVideos.filter(v => active.completedVideos.includes(v.videoId)).length
 
 	async function getNudge() {
 		try {
-			setLoadingNudge(true)
 			const ctx = {
-				streak: session?.streak ?? 0,
+				streak: active?.streak ?? 0,
 				progress: overallPct,
 				videosLeftToday: todayVideos.length - todaysDone,
 			}
@@ -84,11 +56,9 @@ const Dashboard = (_props: DashboardProps) => {
 				body: JSON.stringify(ctx),
 			})
 			const json = await res.json()
-			setNudge(json.nudge ?? 'Keep going!')
+			toast(json.nudge ?? 'Keep going!')
 		} catch {
-			setNudge('Keep going!')
-		} finally {
-			setLoadingNudge(false)
+			toast('Keep going!')
 		}
 	}
 
@@ -101,11 +71,11 @@ const Dashboard = (_props: DashboardProps) => {
 						<h2 className="text-lg font-semibold text-text-dark mb-3">Today's Videos</h2>
 						<ul className="space-y-2 text-text-dark">
 							{todayVideos.map((v) => {
-								const done = session?.completedVideos.includes(v.videoId)
+								const done = active.completedVideos.includes(v.videoId)
 								return (
-									<li key={v.videoId} className={`p-3 rounded-lg bg-accent-blue/40 ${done ? 'opacity-60 line-through' : ''}`}>
+									<motion.li key={v.videoId} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`p-3 rounded-lg bg-accent-blue/40 ${done ? 'opacity-60 line-through' : ''}`}>
 										{v.title}
-									</li>
+									</motion.li>
 								)
 							})}
 						</ul>
@@ -116,23 +86,17 @@ const Dashboard = (_props: DashboardProps) => {
 							<button
 								className="inline-flex items-center gap-2 bg-accent-pink hover:bg-accent-pink/80 text-text-dark font-semibold px-4 py-2 rounded-lg transition-colors"
 								onClick={getNudge}
-								disabled={loadingNudge}
 							>
 								<Sparkles className="w-4 h-4" />
-								{loadingNudge ? 'Thinking…' : 'Get a Motivation Boost'}
+								Get a Motivation Boost
 							</button>
 						</div>
-						{nudge && (
-							<div className="mt-3 text-text-dark/90 bg-accent-blue/40 border border-accent-blue/60 rounded-lg p-3">
-								{nudge}
-							</div>
-						)}
 					</div>
 				</div>
 				<div className="space-y-4">
 					<ProgressCard title="Overall Progress" value={`${overallPct}%`} />
 					<ProgressCard title="Today's Goal" value={`${todaysDone} of ${todayVideos.length}`} />
-					<ProgressCard title="Current Streak" value={`${session?.streak ?? 0}`} />
+					<ProgressCard title="Current Streak" value={`${active.streak}`} />
 				</div>
 			</div>
 		</div>

@@ -1,8 +1,9 @@
 import { ArrowRight } from 'lucide-react'
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 
 interface LandingPageProps {
-	onSubmitUrl?: (url: string) => void
+	onSubmitUrl?: (url: string) => Promise<void> | void
 }
 
 const LandingPage = ({ onSubmitUrl }: LandingPageProps) => {
@@ -28,7 +29,13 @@ const LandingPage = ({ onSubmitUrl }: LandingPageProps) => {
 					<button
 						type="button"
 						className="inline-flex items-center gap-2 bg-accent-pink hover:bg-accent-pink/80 text-text-dark font-semibold px-5 py-3 rounded-lg transition-colors"
-						onClick={() => onSubmitUrl?.(url)}
+						onClick={async () => {
+							try {
+								await onSubmitUrl?.(url)
+							} catch (e) {
+								toast.error('Invalid Playlist URL or API Key issue')
+							}
+						}}
 					>
 						Create My Plan
 						<ArrowRight className="h-5 w-5" />

@@ -1,4 +1,5 @@
-import type { PlaylistData, PlaylistVideo } from '../services/youtube'
+import type { PlaylistData } from '../services/youtube'
+import type { PlaylistVideo } from '../types'
 import { useMemo, useState } from 'react'
 
 interface SchedulerProps {
@@ -23,7 +24,6 @@ export function createSchedule(
 	let bucket: PlaylistVideo[] = []
 
 	for (const video of playlistData.videos) {
-		// if adding this video exceeds target and we still have remaining days, push to next day
 		if (
 			bucket.length > 0 &&
 			currentDayAccum + video.durationSeconds > targetPerDaySeconds &&
@@ -42,7 +42,6 @@ export function createSchedule(
 		result[`day${day}`] = bucket
 	}
 
-	// If we still have more days than filled, add empty days
 	for (let d = day + 1; d <= userSchedule.days; d++) {
 		result[`day${d}`] = []
 	}
@@ -59,6 +58,10 @@ const Scheduler = ({ playlist, onConfirm }: SchedulerProps) => {
 		[playlist, days, dailyHours]
 	)
 
+	function handleConfirm() {
+		onConfirm(previewPlan, { days, dailyHours })
+	}
+
 	return (
 		<div className="min-h-screen p-6 sm:p-8 bg-accent-blue">
 			<div className="max-w-3xl mx-auto bg-primary rounded-xl p-6 shadow-sm border border-accent-blue/50">
@@ -68,9 +71,10 @@ const Scheduler = ({ playlist, onConfirm }: SchedulerProps) => {
 				</p>
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-					<label className="flex flex-col gap-2">
+					<label className="flex flex-col gap-2" htmlFor="days-input">
 						<span className="text-sm text-text-light">How many days to complete?</span>
 						<input
+							id="days-input"
 							type="number"
 							min={1}
 							value={days}
@@ -78,9 +82,10 @@ const Scheduler = ({ playlist, onConfirm }: SchedulerProps) => {
 							className="rounded-lg border border-accent-blue/50 px-3 py-2 text-text-dark"
 						/>
 					</label>
-					<label className="flex flex-col gap-2">
+					<label className="flex flex-col gap-2" htmlFor="hours-input">
 						<span className="text-sm text-text-light">Daily hours</span>
 						<input
+							id="hours-input"
 							type="number"
 							min={0.25}
 							step={0.25}
@@ -112,7 +117,7 @@ const Scheduler = ({ playlist, onConfirm }: SchedulerProps) => {
 				<div className="flex justify-end mt-6">
 					<button
 						className="inline-flex items-center gap-2 bg-accent-pink hover:bg-accent-pink/80 text-text-dark font-semibold px-5 py-3 rounded-lg transition-colors"
-						onClick={() => onConfirm(previewPlan, { days, dailyHours })}
+						onClick={handleConfirm}
 					>
 						Confirm Plan
 					</button>

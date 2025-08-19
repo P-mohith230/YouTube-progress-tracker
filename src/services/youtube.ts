@@ -1,9 +1,4 @@
-export interface PlaylistVideo {
-	title: string
-	videoId: string
-	duration: string
-	durationSeconds: number
-}
+import type { PlaylistVideo } from '../types'
 
 export interface PlaylistData {
 	title: string
